@@ -9,6 +9,7 @@ use App\Models\Seat;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class BookingController extends Controller
@@ -23,7 +24,7 @@ class BookingController extends Controller
         ]);
 
         $seatIds = $request->seat_ids;
-        $userId = 1;
+        $userId = Auth::user()->id;
 
 
         return DB::transaction(function () use ($request, $seatIds, $userId) {
