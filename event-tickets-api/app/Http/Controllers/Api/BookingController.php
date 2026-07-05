@@ -1,7 +1,6 @@
 <?php
 
 namespace App\Http\Controllers\Api;
-
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\BookingItem;
@@ -150,4 +149,28 @@ class BookingController extends Controller
 
         return response()->json(['success' => true, 'message' => 'Booking cancelled and seats released.']);
     }
+
+    // ... ရှိပြီးသား ကုဒ်များရဲ့ အောက်ခြေတွင် ထည့်ရန် ...
+
+public function getMyBookings(): JsonResponse
+{
+    $expiredBookings = Booking::where('user_id', Auth::user()->id)
+        ->where('payment_status', 'pending')
+        ->where('created_at', '<', Carbon::now()->subMinutes(10))
+        ->get();
+
+    
+    foreach ($expiredBookings as $expiredBooking) {
+        $expiredBooking->update(['payment_status' => 'cancelled']);
+    }
+    $bookings = Booking::with(['items.seat', 'items.seat.event'])
+        ->where('user_id', Auth::user()->id)
+        ->orderBy('created_at', 'desc')
+        ->get();
+
+    return response()->json([
+        'success' => true,
+        'bookings' => $bookings
+    ]);
+}
 }

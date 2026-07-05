@@ -14,9 +14,10 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-            'password' => bcrypt('password'),
+            'name' => 'System Admin',
+            'email' => 'admin@ticketwave.com',
+            'password' => bcrypt('password123'),
+            'role' => 'admin'
         ]);
 
         $event = Event::create([
@@ -30,7 +31,7 @@ class DatabaseSeeder extends Seeder
         $vipTier = SeatTier::create([
             'event_id' => $event->id,
             'name' => 'VIP Experience',
-            'price' => 70000.00, 
+            'price' => 70000.00,
         ]);
 
         $standardTier = SeatTier::create([
