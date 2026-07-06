@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\BookingItem;
+use App\Models\Event;
 use App\Models\Seat;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -159,7 +160,7 @@ public function getMyBookings(): JsonResponse
         ->where('created_at', '<', Carbon::now()->subMinutes(10))
         ->get();
 
-    
+
     foreach ($expiredBookings as $expiredBooking) {
         $expiredBooking->update(['payment_status' => 'cancelled']);
     }
@@ -173,4 +174,5 @@ public function getMyBookings(): JsonResponse
         'bookings' => $bookings
     ]);
 }
+
 }

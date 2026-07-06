@@ -29,5 +29,7 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::post('/admin/events', function () {
         return response()->json(['message' => 'မင်္ဂလာပါ Admin၊ သင်သည် ပွဲအသစ်များ ဖန်တီးနိုင်ပါပြီ။']);
     });
+    Route::post('/admin/events', [EventController::class, 'createEvent']);
 
+    Route::post('/admin/tiers', [EventController::class, 'createTier']);
 });
