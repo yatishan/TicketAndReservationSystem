@@ -60,62 +60,109 @@ class EventController extends Controller
     }
 
     // (က) ပွဲအသစ် သီးသန့်ဆောက်မည့် Function
-public function createEvent(Request $request): JsonResponse
-{
-    $request->validate([
-        'title'      => 'required|string|max:255',
-        'location'   => 'required|string|max:255',
-        'start_time' => 'required|date',
-        'end_time'   => 'required|date|after:start_time',
-        'description'=> 'required|string'
-    ]);
+    public function createEvent(Request $request): JsonResponse
+    {
+        $request->validate([
+            'title'      => 'required|string|max:255',
+            'location'   => 'required|string|max:255',
+            'start_time' => 'required|date',
+            'end_time'   => 'required|date|after:start_time',
+            'description' => 'required|string'
+        ]);
 
-    $event = Event::create([
-        'title'      => $request->title,
-        'location'   => $request->location,
-        'start_time' => $request->start_time,
-        'end_time'   => $request->end_time,
-        'description' => $request->description
-    ]);
+        $event = Event::create([
+            'title'      => $request->title,
+            'location'   => $request->location,
+            'start_time' => $request->start_time,
+            'end_time'   => $request->end_time,
+            'description' => $request->description
+        ]);
 
-    return response()->json([
-        'success' => true,
-        'message' => '📅 ပွဲအသစ်ကို အောင်မြင်စွာ ဖန်တီးပြီးပါပြီ။ ခုံအမျိုးအစားများ ဆက်လက်ဖန်တီးနိုင်ပါပြီ။',
-        'event_id'=> $event->id
-    ], 201);
-}
+        return response()->json([
+            'success' => true,
+            'message' => '📅 ပွဲအသစ်ကို အောင်မြင်စွာ ဖန်တီးပြီးပါပြီ။ ခုံအမျိုးအစားများ ဆက်လက်ဖန်တီးနိုင်ပါပြီ။',
+            'event_id' => $event->id
+        ], 201);
+    }
 
-// (ခ) ⭐ သင်အလိုရှိသော Tier နှင့် Seats သီးသန့်ဆောက်မည့် Function
-public function createTier(Request $request): JsonResponse
-{
-    $request->validate([
-        'event_id' => 'required|exists:events,id',
-        'name'     => 'required|string|max:255',
-        'price'    => 'required|numeric|min:0',
-        'count'    => 'required|integer|min:1',
-    ]);
+    // (ခ) ⭐ သင်အလိုရှိသော Tier နှင့် Seats သီးသန့်ဆောက်မည့် Function
+    public function createTier(Request $request): JsonResponse
+    {
+        $request->validate([
+            'event_id' => 'required|exists:events,id',
+            'name'     => 'required|string|max:255',
+            'price'    => 'required|numeric|min:0',
+            'count'    => 'required|integer|min:1',
+        ]);
 
-    // ၁။ Seat Tier ကို အရင်ဆောက်မယ်
-    $tier = SeatTier::create([
-        'event_id' => $request->event_id,
-        'name'     => $request->name,
-        'price'    => $request->price
-    ]);
+        // ၁။ Seat Tier ကို အရင်ဆောက်မယ်
+        $tier = SeatTier::create([
+            'event_id' => $request->event_id,
+            'name'     => $request->name,
+            'price'    => $request->price
+        ]);
 
-    // ၂။ ထို Tier အောက်မှာ အရေအတွက်အတိုင်း ခုံ (Seats) များကို Loop ပတ်ဆောက်မယ်
-    $prefix = strtoupper(substr($request->name, 0, 1));
+        // ၂။ ထို Tier အောက်မှာ အရေအတွက်အတိုင်း ခုံ (Seats) များကို Loop ပတ်ဆောက်မယ်
+        $prefix = strtoupper(substr($request->name, 0, 1));
 
-    for ($i = 1; $i <= $request->count; $i++) {
-        Seat::create([
-            'tier_id' => $tier->id,
-            'event_id'=> $request->event_id,
-            'seat_number'  => $prefix . '-' . $i,
+        for ($i = 1; $i <= $request->count; $i++) {
+            Seat::create([
+                'tier_id' => $tier->id,
+                'event_id' => $request->event_id,
+                'seat_number'  => $prefix . '-' . $i,
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "🎉 {$request->name} Tier နှင့် ခုံပေါင်း {$request->count} ခုကို အောင်မြင်စွာ ဖန်တီးပြီးပါပြီဗျာ။"
+        ], 201);
+    }
+
+    public function deleteEvent($id): JsonResponse
+    {
+        $event = Event::find($id);
+
+        if (!$event) {
+            return response()->json(['success' => false, 'message' => 'ပွဲစဉ် ရှာမတွေ့ပါဗျာ။'], 404);
+        }
+
+        $event->delete(); // ပွဲစဉ်ကို ဖျက်မည်
+
+        return response()->json([
+            'success' => true,
+            'message' => '🗑️ ပွဲစဉ်ကို အောင်မြင်စွာ ဖျက်ပစ်လိုက်ပါပြီဗျာ။'
         ]);
     }
 
-    return response()->json([
-        'success' => true,
-        'message' => "🎉 {$request->name} Tier နှင့် ခုံပေါင်း {$request->count} ခုကို အောင်မြင်စွာ ဖန်တီးပြီးပါပြီဗျာ။"
-    ], 201);
-}
+    public function updateEvent(Request $request, $id): JsonResponse
+    {
+        $request->validate([
+            'title'       => 'required|string|max:255',
+            'description' => 'required|string',
+            'location'    => 'required|string|max:255',
+            'start_time'  => 'required|date',
+            'end_time'    => 'required|date|after:start_time',
+        ]);
+
+        $event = Event::find($id);
+
+        if (!$event) {
+            return response()->json(['success' => false, 'message' => 'ပွဲစဉ် ရှာမတွေ့ပါဗျာ။'], 404);
+        }
+
+        // ဒေတာများ အစားထိုးပြင်ဆင်မည်
+        $event->update([
+            'title'       => $request->title,
+            'description' => $request->description,
+            'location'    => $request->location,
+            'start_time'  => $request->start_time,
+            'end_time'    => $request->end_time,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => '📝 ပွဲစဉ်အချက်အလက်များကို အောင်မြင်စွာ ပြင်ဆင်ပြီးပါပြီဗျာ။'
+        ]);
+    }
 }

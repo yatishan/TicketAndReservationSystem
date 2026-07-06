@@ -32,4 +32,6 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::post('/admin/events', [EventController::class, 'createEvent']);
 
     Route::post('/admin/tiers', [EventController::class, 'createTier']);
+    Route::delete('/admin/events/{id}', [EventController::class, 'deleteEvent']);
+    Route::put('/admin/events/{id}', [EventController::class, 'updateEvent']);
 });

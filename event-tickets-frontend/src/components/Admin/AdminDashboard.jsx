@@ -1,8 +1,11 @@
 import React, { useState } from "react";
 import { Routes, Route, Link, useNavigate } from "react-router-dom";
 import API from "../../services/api";
-import CreateEventPage from './CreateEventPage';
-import CreateTierPage from './CreateTierPage';
+import CreateEventPage from "./CreateEventPage";
+import CreateTierPage from "./CreateTierPage";
+import ManageEvents from "./ManageEvent";
+import EditEvent from "./EditEvent";
+
 
 // Main Admin Dashboard Layout
 const AdminDashboard = ({ user, onLogout }) => {
@@ -24,6 +27,15 @@ const AdminDashboard = ({ user, onLogout }) => {
               >
                 📊 Dashboard Home
               </Link>
+            </li>
+            <li className="nav-item">
+              <Link
+                to="/admin/manage-events"
+                className="text-white text-decoration-none py-2 d-block"
+              >
+                ⚙️ ပွဲစဉ်များ စီမံရန်
+              </Link>{" "}
+              {/* 👈 အသစ်တိုးမည့် Sidebar ခလုတ် */}
             </li>
             <li className="nav-item">
               <Link
@@ -69,6 +81,8 @@ const AdminDashboard = ({ user, onLogout }) => {
                 </div>
               }
             />
+            <Route path="manage-events" element={<ManageEvents />} />
+            <Route path="edit-event/:id" element={<EditEvent />} />
             <Route
               path="create-event"
               element={
