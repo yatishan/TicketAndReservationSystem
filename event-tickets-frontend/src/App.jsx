@@ -7,7 +7,7 @@ import Login from "./components/Login";
 import Register from "./components/Register";
 import API from "./services/api";
 import BookingHistory from "./components/BookingHistory";
-import AdminDashboard from "./components/AdminDashboard";
+import AdminDashboard from "./components/Admin/AdminDashboard";
 
 function App() {
   const navigate = useNavigate();
