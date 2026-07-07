@@ -5,7 +5,9 @@ import CreateEventPage from "./CreateEventPage";
 import CreateTierPage from "./CreateTierPage";
 import ManageEvents from "./ManageEvent";
 import EditEvent from "./EditEvent";
-
+import ManageTiers from "./ManageTiers";
+import ViewSales from "./ViewSales";
+import ManageUsers from "./ManageUsers";
 
 // Main Admin Dashboard Layout
 const AdminDashboard = ({ user, onLogout }) => {
@@ -30,12 +32,27 @@ const AdminDashboard = ({ user, onLogout }) => {
             </li>
             <li className="nav-item">
               <Link
+                to="/admin/sales"
+                className="text-white text-decoration-none py-2 d-block"
+              >
+                📊 အရောင်းစာရင်းကြည့်ရန်
+              </Link>
+            </li>
+            <li className="nav-item">
+              <Link
                 to="/admin/manage-events"
                 className="text-white text-decoration-none py-2 d-block"
               >
                 ⚙️ ပွဲစဉ်များ စီမံရန်
               </Link>{" "}
-              {/* 👈 အသစ်တိုးမည့် Sidebar ခလုတ် */}
+            </li>
+            <li className="nav-item">
+              <Link
+                to="/admin/manage-tiers"
+                className="text-white text-decoration-none py-2 d-block"
+              >
+                🪑 ခုံအမျိုးအစားများ စီမံရန်
+              </Link>{" "}
             </li>
             <li className="nav-item">
               <Link
@@ -73,15 +90,13 @@ const AdminDashboard = ({ user, onLogout }) => {
                   <h2 className="fw-bold text-dark mb-4">
                     Dashboard Analytics Overview
                   </h2>
-                  <p>
-                    ဒီနေရာတွင် စာရင်းဇယားများနှင့် ရောင်းအားများကို
-                    ပြသပေးသွားမည်ဖြစ်ပါသည်။ Sidebar မှတစ်ဆင့်
-                    လုပ်ဆောင်ချက်များကို ရွေးချယ်နိုင်ပါတယ်ဗျာ။
-                  </p>
+                  <ManageUsers/>
                 </div>
               }
             />
+            <Route path="sales" element={<ViewSales />} />
             <Route path="manage-events" element={<ManageEvents />} />
+            <Route path="manage-tiers" element={<ManageTiers />} />
             <Route path="edit-event/:id" element={<EditEvent />} />
             <Route
               path="create-event"

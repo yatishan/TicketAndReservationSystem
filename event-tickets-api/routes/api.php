@@ -34,4 +34,12 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::post('/admin/tiers', [EventController::class, 'createTier']);
     Route::delete('/admin/events/{id}', [EventController::class, 'deleteEvent']);
     Route::put('/admin/events/{id}', [EventController::class, 'updateEvent']);
+
+    Route::get('/admin/tiers', [EventController::class, 'getTiers']);
+    Route::put('/admin/tiers/{id}', [EventController::class, 'updateTier']);
+    Route::delete('/admin/tiers/{id}', [EventController::class, 'deleteTier']);
+    Route::get('/admin/sales', [EventController::class, 'getSalesDashboard']);
+
+    Route::get('/admin/users', [EventController::class, 'getUsers']);
+    Route::put('/admin/users/{id}/toggle-status', [EventController::class, 'toggleUserStatus']);
 });
