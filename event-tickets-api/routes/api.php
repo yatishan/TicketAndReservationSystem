@@ -19,10 +19,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/bookings/reserve', [BookingController::class, 'reserveSeats']);
     Route::post('/bookings/{id}/cancel', [BookingController::class, 'cancelBooking']);
     Route::get('/my-bookings', [BookingController::class, 'getMyBookings']);
+
 });
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+ Route::get('/ticket/{token}/qrcode', [BookingController::class, 'generateQrCode']);
 
 //admin
 Route::middleware(['auth:sanctum', 'admin'])->group(function () {
@@ -42,4 +44,6 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
 
     Route::get('/admin/users', [EventController::class, 'getUsers']);
     Route::put('/admin/users/{id}/toggle-status', [EventController::class, 'toggleUserStatus']);
+
+    Route::put('/admin/bookings/{id}/status', [BookingController::class, 'updatePaymentStatus']);
 });

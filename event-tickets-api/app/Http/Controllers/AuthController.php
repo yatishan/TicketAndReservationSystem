@@ -61,6 +61,13 @@ class AuthController extends Controller
             ], 401);
         }
 
+        if (!$user->is_active) {
+            return response()->json([
+                'success' => false,
+                'message' => '⚠️ စည်းကမ်းချက်များကြောင့် သင့်အကောင့်အား ပိတ်ပင် (Blocked) ထားပါသဖြင့် ဝင်ရောက်၍မရပါဗျာ။'
+            ], 403); 
+        }
+
 
         $token = $user->createToken('auth_token')->plainTextToken;
 

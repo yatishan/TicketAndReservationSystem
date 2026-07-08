@@ -28,6 +28,22 @@ const ViewSales = () => {
       </div>
     );
 
+  const handleUpdateStatus = (id, status) => {
+    if (
+      window.confirm(
+        `⚠️ ဤ Booking ကို ${status.toUpperCase()} သို့ ပြောင်းလဲရန် သေချာပါသလားဗျာ?`,
+      )
+    ) {
+      API.put(`/admin/bookings/${id}/status`, { payment_status: status })
+        .then((res) => {
+          alert(res.data.message);
+          // စာရင်းကို အလိုအလျောက် Update ပြန်ဖြစ်စေရန် ဒေတာပြန်ခေါ်ခြင်း
+          API.get("/admin/sales").then((res) => setSalesData(res.data));
+        })
+        .catch((err) => alert("အခြေအနေ ပြောင်းလဲရာတွင် အမှားအယွင်းရှိပါသည်"));
+    }
+  };
+
   return (
     <div>
       <h4 className="fw-bold text-dark mb-4">
@@ -71,6 +87,8 @@ const ViewSales = () => {
                 <th>ရွေးချယ်ခဲ့သည့် ခုံများ</th>
                 <th>ကျသင့်ငွေ</th>
                 <th>ဝယ်ယူသည့်ရက်စွဲ</th>
+                <th>status</th>
+                <th>action</th>
               </tr>
             </thead>
             <tbody>
@@ -103,6 +121,46 @@ const ViewSales = () => {
                     </td>
                     <td className="text-muted">
                       {new Date(booking.created_at).toLocaleDateString()}
+                    </td>
+                    <td>
+                      <span
+                        className={`badge ${
+                          booking.payment_status === "paid"
+                            ? "bg-success"
+                            : booking.payment_status === "pending"
+                              ? "bg-warning text-dark"
+                              : booking.payment_status === "cancelled"
+                                ? "bg-danger"
+                                : "bg-secondary"
+                        }`}
+                      >
+                        {booking.payment_status.toUpperCase()}
+                      </span>
+                    </td>
+                    <td>
+                      {booking.payment_status === "pending" && (
+                        <div className="d-flex gap-1">
+                          <button
+                            className="btn btn-sm btn-success fw-bold"
+                            onClick={() =>
+                              handleUpdateStatus(booking.id, "paid")
+                            }
+                          >
+                            ✓ Approve
+                          </button>
+                          <button
+                            className="btn btn-sm btn-outline-danger fw-bold"
+                            onClick={() =>
+                              handleUpdateStatus(booking.id, "cancelled")
+                            }
+                          >
+                            ✕ Cancel
+                          </button>
+                        </div>
+                      )}
+                      {booking.payment_status !== "pending" && (
+                        <span className="text-muted small">Done</span>
+                      )}
                     </td>
                   </tr>
                 ))

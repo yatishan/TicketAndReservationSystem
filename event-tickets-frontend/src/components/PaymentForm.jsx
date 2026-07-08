@@ -23,7 +23,7 @@ const PaymentForm = ({ bookingId, totalPrice, onSuccess, onCancel }) => {
             setLoading(false);
             if (response.data.success) {
                 // အောင်မြင်ရင် အောင်မြင်ကြောင်း UI ကို လှမ်းပြောမယ်
-                onSuccess();
+                onSuccess(response.data.ticket_token);
             }
         })
         .catch(err => {

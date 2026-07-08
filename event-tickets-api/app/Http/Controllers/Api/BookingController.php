@@ -1,6 +1,8 @@
 <?php
 
 namespace App\Http\Controllers\Api;
+
+use App\Events\SeatStatusUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\BookingItem;
@@ -11,6 +13,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 
 class BookingController extends Controller
 {
@@ -71,6 +74,8 @@ class BookingController extends Controller
                 ]);
             }
 
+            broadcast(new SeatStatusUpdated($request->event_id, $seatIds, 'pending'))->toOthers();
+
             return response()->json([
                 'success' => true,
                 'message' => 'Seats reserved for 10 minutes. Please proceed to payment.',
@@ -96,7 +101,6 @@ class BookingController extends Controller
             return response()->json(['success' => false, 'message' => 'Invalid or already processed booking.'], 404);
         }
 
-
         $bookingItems = $booking->items()->get();
 
         if ($bookingItems->isEmpty()) {
@@ -113,8 +117,17 @@ class BookingController extends Controller
             return response()->json(['success' => false, 'message' => 'Reservation expired. Please try again.'], 422);
         }
 
-        DB::transaction(function () use ($booking, $bookingItems) {
-            $booking->update(['payment_status' => 'paid']);
+        // 🎯 ၁။ ငွေချေမှု အောင်မြင်ခါနီးအချိန်တွင် Unique Token တစ်ခု အရင်ထုတ်ယူခြင်း
+        $ticketToken = (string) \Illuminate\Support\Str::uuid();
+
+        // 🎯 ၂။ Transaction ထဲတွင် သုံးနိုင်ရန် $ticketToken အား 'use' ထဲ ထည့်ပေးခြင်း
+        DB::transaction(function () use ($booking, $bookingItems, $ticketToken) {
+
+            // 🎯 ၃။ payment_status ပြောင်းလဲချိန်တွင် ticket_token ကိုပါ တစ်ခါတည်း ဒေတာဘေ့စ်ထဲ သိမ်းဆည်းလိုက်ခြင်း
+            $booking->update([
+                'payment_status' => 'paid',
+                'ticket_token' => $ticketToken
+            ]);
 
             $seatIds = $bookingItems->pluck('seat_id');
             Seat::whereIn('id', $seatIds)->update([
@@ -126,10 +139,10 @@ class BookingController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Payment successful! Your tickets are confirmed.',
-            'booking_id' => $booking->id
+            'booking_id' => $booking->id,
+            'ticket_token' => $ticketToken // 🎯 ၄။ React Frontend ဘက်သို့ QR ဆွဲရန်အတွက် Token အား Response ပြန်ပေးလိုက်ခြင်း
         ]);
     }
-
     public function cancelBooking($id): JsonResponse
     {
         $booking = Booking::with('items')->find($id);
@@ -153,26 +166,77 @@ class BookingController extends Controller
 
     // ... ရှိပြီးသား ကုဒ်များရဲ့ အောက်ခြေတွင် ထည့်ရန် ...
 
-public function getMyBookings(): JsonResponse
-{
-    $expiredBookings = Booking::where('user_id', Auth::user()->id)
-        ->where('payment_status', 'pending')
-        ->where('created_at', '<', Carbon::now()->subMinutes(10))
-        ->get();
+    public function getMyBookings(): JsonResponse
+    {
+        $expiredBookings = Booking::where('user_id', Auth::user()->id)
+            ->where('payment_status', 'pending')
+            ->where('created_at', '<', Carbon::now()->subMinutes(10))
+            ->get();
 
 
-    foreach ($expiredBookings as $expiredBooking) {
-        $expiredBooking->update(['payment_status' => 'cancelled']);
+        foreach ($expiredBookings as $expiredBooking) {
+            $expiredBooking->update(['payment_status' => 'cancelled']);
+        }
+        $bookings = Booking::with(['items.seat', 'items.seat.event'])
+            ->where('user_id', Auth::user()->id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'bookings' => $bookings
+        ]);
     }
-    $bookings = Booking::with(['items.seat', 'items.seat.event'])
-        ->where('user_id', Auth::user()->id)
-        ->orderBy('created_at', 'desc')
-        ->get();
 
-    return response()->json([
-        'success' => true,
-        'bookings' => $bookings
-    ]);
-}
+    public function updatePaymentStatus(Request $request, $id): JsonResponse
+    {
+        $request->validate([
+            'payment_status' => 'required|in:pending,paid,failed,cancelled'
+        ]);
 
+
+        $booking = Booking::with('items.seat')->find($id);
+
+        if (!$booking) {
+            return response()->json(['success' => false, 'message' => 'Booking ရှာမတွေ့ပါဗျာ။'], 404);
+        }
+
+        $booking->payment_status = $request->payment_status;
+        if ($request->payment_status === 'paid' && !$booking->ticket_token) {
+            $booking->ticket_token = (string) \Illuminate\Support\Str::uuid();
+        }
+        $booking->save();
+
+
+        if (in_array($request->payment_status, ['cancelled', 'failed'])) {
+            foreach ($booking->items as $item) {
+                if ($item->seat) {
+                    $item->seat->status = 'available';
+                    $item->seat->save();
+                }
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "🔄 Booking အား '" . strtoupper($request->payment_status) . "' သို့ အောင်မြင်စွာ ပြောင်းလဲလိုက်ပါပြီဗျာ။"
+        ]);
+    }
+
+    public function generateQrCode($token)
+    {
+        // 🚀 Package သွင်းမရလို့ စိတ်မညစ်ပါနဲ့၊ Public API ကို Laravel ထဲကနေ လှမ်းခေါ်ပါမယ်
+        $response = Http::get("https://api.qrserver.com/v1/create-qr-code/", [
+            'size' => '250x250',
+            'data' => $token,
+            'format' => 'svg' // သန့်ရှင်းပြီး အရွယ်အစားညှိရလွယ်တဲ့ SVG ပုံစံ တောင်းဆိုခြင်း
+        ]);
+
+        // API ကနေ ပုံရလဒ် ပြန်ပေးရင် အဲဒီ SVG ဒေတာကို Browser ဆီ တိုက်ရိုက် Response ပြန်ပေးမည်
+        if ($response->successful()) {
+            return response($response->body())->header('Content-Type', 'image/svg+xml');
+        }
+
+        return response('QR Code ဆောက်လုပ်ခြင်း မအောင်မြင်ပါ', 500);
+    }
 }

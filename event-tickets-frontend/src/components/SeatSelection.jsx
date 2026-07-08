@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import API from '../services/api';
+import Echo from 'laravel-echo'; // 👈 ၁။ သီးသန့်သုံးရန် Import တိုးပေးပါမည်
+import Pusher from 'pusher-js';   // 👈 ၂။ သီးသန့်သုံးရန် Import တိုးပေးပါမည်
 
 const SeatSelection = ({ eventId, onBack, onProceedToPay }) => {
     const [eventData, setEventData] = useState(null);
@@ -24,15 +26,72 @@ const SeatSelection = ({ eventId, onBack, onProceedToPay }) => {
         fetchSeats();
     }, [eventId]);
 
+    useEffect(() => {
+        window.Pusher = Pusher;
+        const echo = new Echo({
+            broadcaster: 'reverb', 
+            key: 'your-websocket-key',
+            wsHost: window.location.hostname,
+            wsPort: 8080,
+            forceTLS: false,
+            disableStats: true,
+        });
+
+        echo.channel(`event.${eventId}`)
+            .listen('.SeatStatusUpdated', (data) => {
+                console.log("Real-time seats update ရပါပြီ- ", data);
+                
+                setEventData((prevData) => {
+                    if (!prevData) return prevData;
+                    
+                    // 💡 ဒေတာအမျိုးအစား (String/Number) လွဲချော်မှုမရှိအောင် map(Number) လုပ်ထားပါမယ်
+                    const targetSeatIds = Array.isArray(data.seatIds) ? data.seatIds.map(Number) : [];
+                    
+                    return {
+                        ...prevData,
+                        seats: prevData.seats.map((seat) => 
+                            targetSeatIds.includes(Number(seat.id)) ? { ...seat, status: data.status } : seat
+                        )
+                    };
+                });
+            });
+
+        return () => {
+            echo.leaveChannel(`event.${eventId}`);
+        };
+    }, [eventId]);
+
+
+    // 🔄 ၂။ 💡 [အဓိက အသက်သွေးကြောအသစ်] ခုံဒေတာ (eventData) ပြောင်းလဲသွားတိုင်း မိမိရွေးထားသောခုံနှင့် Amount ကို တိုက်ရိုက်ချိတ်ဆက်ပေးမည့်အပိုင်း
+    useEffect(() => {
+        if (!eventData || !eventData.seats) return;
+
+        setSelectedSeats((prevSelected) => {
+            // မိမိရွေးထားတဲ့ ခုံတွေထဲကမှ အခြားသူ ဦးမသွားသေးတဲ့ (available ဖြစ်နေဆဲ) ခုံတွေကိုပဲ ဇကာတင် ချန်ထားမယ်
+            const validSeats = prevSelected.filter(id => {
+                const seat = eventData.seats.find(s => Number(s.id) === Number(id));
+                // ခုံရှိရမယ်၊ တင်မကဘဲ status က pending သို့မဟုတ် booked မဖြစ်နေရဘူး
+                return seat && seat.status !== 'pending' && seat.status !== 'booked';
+            });
+
+            // အကယ်၍ မိမိခုံကို သူများဦးသွားလို့ ခုံအရေအတွက် လျော့သွားခဲ့ရင်
+            if (validSeats.length !== prevSelected.length) {
+                setTimeout(() => {
+                    alert("⚠️ စိတ်မကောင်းပါဘူးဗျာ၊ သင်ရွေးချယ်ထားသော ခုံအချို့ကို အခြားသူတစ်ဦးက ဦးသွားသဖြင့် ဖယ်ထုတ်လိုက်ရပါသည်တန်။");
+                }, 10);
+            }
+
+            return validSeats; // အားနေသေးတဲ့ ခုံအသစ်စာရင်းကိုပဲ ပြန်ပေးလိုက်မယ်
+        });
+    }, [eventData]);
+
     // ခုံတစ်ခုကို နှိပ်လိုက်တဲ့အခါ လုပ်ဆောင်မယ့် Logic
     const handleSeatClick = (seat) => {
-        if (seat.status === 'booked' || seat.status === 'pending') return; // ဝယ်ပြီးသား/Lock မိနေရင် နှိပ်လို့မရစေရ
+        if (seat.status === 'booked' || seat.status === 'pending') return; 
 
         if (selectedSeats.includes(seat.id)) {
-            // ရွေးပြီးသားခုံဆိုရင် ပြန်ဖြုတ်မယ်
             setSelectedSeats(selectedSeats.filter(id => id !== seat.id));
         } else {
-            // အသစ်ဆိုရင် ပေါင်းထည့်မယ်
             setSelectedSeats([...selectedSeats, seat.id]);
         }
     };
@@ -54,7 +113,6 @@ const SeatSelection = ({ eventId, onBack, onProceedToPay }) => {
             return;
         }
 
-        // Backend ရဲ့ /bookings/reserve API ဆီကို လှမ်းပို့မယ်
         API.post('/bookings/reserve', {
             event_id: eventId,
             seat_ids: selectedSeats
@@ -122,7 +180,7 @@ const SeatSelection = ({ eventId, onBack, onProceedToPay }) => {
                     </div>
                 </div>
 
-               
+                {/* ညာဘက်အခြမ်း - ဝယ်ယူမှုအကျဉ်းချုပ် */}
                 <div className="col-lg-4">
                     <div className="card shadow-sm p-4 bg-light border-0">
                         <h5 className="fw-bold mb-3">ဝယ်ယူမှု အကျဉ်းချုပ်</h5>
