@@ -8,6 +8,7 @@ import EditEvent from "./EditEvent";
 import ManageTiers from "./ManageTiers";
 import ViewSales from "./ViewSales";
 import ManageUsers from "./ManageUsers";
+import AdminScanner from "./AdminScanner";
 
 // Main Admin Dashboard Layout
 const AdminDashboard = ({ user, onLogout }) => {
@@ -32,10 +33,18 @@ const AdminDashboard = ({ user, onLogout }) => {
             </li>
             <li className="nav-item">
               <Link
-                to="/admin/sales"
+                to="/admin/scanner"
                 className="text-white text-decoration-none py-2 d-block"
               >
-                📊 အရောင်းစာရင်းကြည့်ရန်
+                🛡️ လက်မှတ်Qrဖတ်ရန်
+              </Link>
+            </li>
+            <li className="nav-item">
+              <Link
+                to="/admin/users"
+                className="text-white text-decoration-none py-2 d-block"
+              >
+              👥 အသုံးပြုသူများ စီမံခန့်ခွဲခြင်း
               </Link>
             </li>
             <li className="nav-item">
@@ -90,11 +99,12 @@ const AdminDashboard = ({ user, onLogout }) => {
                   <h2 className="fw-bold text-dark mb-4">
                     Dashboard Analytics Overview
                   </h2>
-                  <ManageUsers/>
+                  <ViewSales />
                 </div>
               }
             />
-            <Route path="sales" element={<ViewSales />} />
+            <Route path="scanner" element={<AdminScanner />} />
+            <Route path="users" element={<ManageUsers />} />
             <Route path="manage-events" element={<ManageEvents />} />
             <Route path="manage-tiers" element={<ManageTiers />} />
             <Route path="edit-event/:id" element={<EditEvent />} />

@@ -25,6 +25,7 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
  Route::get('/ticket/{token}/qrcode', [BookingController::class, 'generateQrCode']);
+ Route::post('/admin/verify-ticket/{token}', [BookingController::class, 'verifyTicket']);
 
 //admin
 Route::middleware(['auth:sanctum', 'admin'])->group(function () {

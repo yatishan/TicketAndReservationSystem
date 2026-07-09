@@ -1,7 +1,6 @@
 <?php
 
 namespace App\Http\Controllers\Api;
-
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Event;
@@ -171,143 +170,141 @@ class EventController extends Controller
     }
 
     public function getTiers(): JsonResponse
-{
-    // Tier Model ထဲမှာ event()ဆိုတဲ့ Relationship ရေးထားဖို့ လိုအပ်ပါတယ်ဗျာ
-    $tiers = SeatTier::with('event','seats')->orderBy('created_at', 'desc')->get();
-    return response()->json(['success' => true, 'tiers' => $tiers]);
-}
-
-// ၂။ Tier အချက်အလက် (ဈေးနှုန်း/ခုံအရေအတွက်) ပြင်ဆင်ရန်
-public function updateTier(Request $request, $id): JsonResponse
-{
-    $request->validate([
-        'name'     => 'required|string|max:255',
-        'price'    => 'required|numeric|min:0',
-        'capacity' => 'required|integer|min:1',
-    ]);
-
-    $tier = SeatTier::find($id);
-    if (!$tier) {
-        return response()->json(['success' => false, 'message' => 'ခုံအမျိုးအစား ရှာမတွေ့ပါဗျာ။'], 404);
+    {
+        // Tier Model ထဲမှာ event()ဆိုတဲ့ Relationship ရေးထားဖို့ လိုအပ်ပါတယ်ဗျာ
+        $tiers = SeatTier::with('event', 'seats')->orderBy('created_at', 'desc')->get();
+        return response()->json(['success' => true, 'tiers' => $tiers]);
     }
 
-    $newCapacity = (int) $request->capacity;
+    // ၂။ Tier အချက်အလက် (ဈေးနှုန်း/ခုံအရေအတွက်) ပြင်ဆင်ရန်
+    public function updateTier(Request $request, $id): JsonResponse
+    {
+        $request->validate([
+            'name'     => 'required|string|max:255',
+            'price'    => 'required|numeric|min:0',
+            'capacity' => 'required|integer|min:1',
+        ]);
 
-
-    $currentSeatsCount = $tier->seats()->count();
-
-
-    if ($newCapacity < $currentSeatsCount) {
-        $seatsToDeleteCount = $currentSeatsCount - $newCapacity;
-
-
-        $bookedSeatsCount = $tier->seats()->where('status', 'booked')->count();
-        if ($newCapacity < $bookedSeatsCount) {
-            return response()->json([
-                'success' => false,
-                'message' => '⚠️ မအောင်မြင်ပါ။ လူကြိုတင်ဝယ်ယူထားသော ခုံအရေအတွက်ထက် နည်း၍ လျှော့ချ၍မရပါဗျာ။'
-            ], 422);
+        $tier = SeatTier::find($id);
+        if (!$tier) {
+            return response()->json(['success' => false, 'message' => 'ခုံအမျိုးအစား ရှာမတွေ့ပါဗျာ။'], 404);
         }
 
-        // မဝယ်ရသေးတဲ့ နောက်ဆုံးခုံတွေကို ရွေးပြီး ဖျက်ပစ်မယ်
-        $seatsToDelete = $tier->seats()
-            ->where('status', 'available')
-            ->orderBy('id', 'desc')
-            ->take($seatsToDeleteCount)
+        $newCapacity = (int) $request->capacity;
+
+
+        $currentSeatsCount = $tier->seats()->count();
+
+
+        if ($newCapacity < $currentSeatsCount) {
+            $seatsToDeleteCount = $currentSeatsCount - $newCapacity;
+
+
+            $bookedSeatsCount = $tier->seats()->where('status', 'booked')->count();
+            if ($newCapacity < $bookedSeatsCount) {
+                return response()->json([
+                    'success' => false,
+                    'message' => '⚠️ မအောင်မြင်ပါ။ လူကြိုတင်ဝယ်ယူထားသော ခုံအရေအတွက်ထက် နည်း၍ လျှော့ချ၍မရပါဗျာ။'
+                ], 422);
+            }
+
+            // မဝယ်ရသေးတဲ့ နောက်ဆုံးခုံတွေကို ရွေးပြီး ဖျက်ပစ်မယ်
+            $seatsToDelete = $tier->seats()
+                ->where('status', 'available')
+                ->orderBy('id', 'desc')
+                ->take($seatsToDeleteCount)
+                ->get();
+
+            foreach ($seatsToDelete as $seat) {
+                $seat->delete();
+            }
+        } elseif ($newCapacity > $currentSeatsCount) {
+            $seatsToCreateCount = $newCapacity - $currentSeatsCount;
+
+            for ($i = 1; $i <= $seatsToCreateCount; $i++) {
+                $seatNumber = strtoupper(substr($request->name, 0, 1));
+
+
+                $tier->seats()->create([
+                    'event_id'    => $tier->event_id,
+                    'seat_number' => $seatNumber . '-' . $i,
+                    'status'   => 'available'
+                ]);
+            }
+        }
+
+        // 📝 နောက်ဆုံးမှ Tier data ကိုပါ Update လုပ်မယ်
+        $tier->update([
+            'name'     => $request->name,
+            'price'    => $request->price,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => '🪑 ခုံအမျိုးအစားနှင့် Seats စာရင်းကိုပါ အလိုအလျောက် ညှိနှိုင်းပြင်ဆင်ပြီးပါပြီဗျာ။'
+        ]);
+    }
+
+    // ၃။ Tier ကို ဖျက်ပစ်ရန်
+    public function deleteTier($id): JsonResponse
+    {
+        $tier = SeatTier::find($id);
+        if (!$tier) {
+            return response()->json(['success' => false, 'message' => 'ခုံအမျိုးအစား ရှာမတွေ့ပါဗျာ။'], 404);
+        }
+
+        $tier->delete();
+        return response()->json(['success' => true, 'message' => '🗑️ ခုံအမျိုးအစားကို ဖျက်ပစ်လိုက်ပါပြီ။']);
+    }
+
+    public function getSalesDashboard(): JsonResponse
+    {
+        // 💡 items ရော၊ items ထဲက seat ကိုပါ တစ်ခါတည်း Nested ဆွဲယူရန် 'items.seat' ဟု ရေးရပါမည်
+        $bookings = Booking::with(['user', 'event', 'items.seat'])
+            ->orderBy('created_at', 'desc')
             ->get();
 
-        foreach ($seatsToDelete as $seat) {
-            $seat->delete();
+        $totalRevenue = $bookings->sum('total_price');
+
+        // စုစုပေါင်း လက်မှတ်စောင်ရေ ရောင်းရမှု
+        $totalTicketsSold = $bookings->sum(function ($booking) {
+            return $booking->items->count();
+        });
+
+        return response()->json([
+            'success' => true,
+            'total_revenue' => $totalRevenue,
+            'total_tickets_sold' => $totalTicketsSold,
+            'bookings' => $bookings
+        ]);
+    }
+
+    // app/Http/Controllers/BookingController.php ထဲတွင် ထည့်ရန်
+
+    // ၁။ User စာရင်းအားလုံးကို ဆွဲထုတ်ရန် (Admin မဟုတ်သူများကိုသာ)
+    public function getUsers(): JsonResponse
+    {
+        $users = User::where('role', '!=', 'admin') // သင့်စနစ်ထဲက admin role စစ်ဆေးမှုအတိုင်း ရေးနိုင်ပါတယ်
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json(['success' => true, 'users' => $users]);
+    }
+
+    // ၂။ User ကို Block / Unblock ပြုလုပ်ရန်
+    public function toggleUserStatus($id): JsonResponse
+    {
+        $user = User::find($id);
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'အသုံးပြုသူ ရှာမတွေ့ပါဗျာ။'], 404);
         }
+
+        // လက်ရှိ status ကို ပြောင်းပြန်လှန်လိုက်ခြင်း (True ဖြစ်ရင် False၊ False ဖြစ်ရင် True)
+        $user->is_active = !$user->is_active;
+        $user->save();
+
+        $statusMessage = $user->is_active ? '🔓 အကောင့်ကို ပြန်လည်ဖွင့်လှစ်ပေးလိုက်ပါပြီ။' : '🔒 အကောင့်ကို ပိတ်ပင် (Block) လိုက်ပါပြီ။';
+
+        return response()->json(['success' => true, 'message' => $statusMessage, 'user' => $user]);
     }
-
-    elseif ($newCapacity > $currentSeatsCount) {
-        $seatsToCreateCount = $newCapacity - $currentSeatsCount;
-
-        for ($i = 1; $i <= $seatsToCreateCount; $i++) {
-            $seatNumber =strtoupper(substr($request->name, 0, 1));
-
-
-            $tier->seats()->create([
-                'event_id'    => $tier->event_id,
-                'seat_number' => $seatNumber.'-'. $i,
-                'status'   => 'available'
-            ]);
-        }
-    }
-
-    // 📝 နောက်ဆုံးမှ Tier data ကိုပါ Update လုပ်မယ်
-    $tier->update([
-        'name'     => $request->name,
-        'price'    => $request->price,
-    ]);
-
-    return response()->json([
-        'success' => true,
-        'message' => '🪑 ခုံအမျိုးအစားနှင့် Seats စာရင်းကိုပါ အလိုအလျောက် ညှိနှိုင်းပြင်ဆင်ပြီးပါပြီဗျာ။'
-    ]);
-}
-
-// ၃။ Tier ကို ဖျက်ပစ်ရန်
-public function deleteTier($id): JsonResponse
-{
-    $tier = SeatTier::find($id);
-    if (!$tier) {
-        return response()->json(['success' => false, 'message' => 'ခုံအမျိုးအစား ရှာမတွေ့ပါဗျာ။'], 404);
-    }
-
-    $tier->delete();
-    return response()->json(['success' => true, 'message' => '🗑️ ခုံအမျိုးအစားကို ဖျက်ပစ်လိုက်ပါပြီ။']);
-}
-
-public function getSalesDashboard(): JsonResponse
-{
-    // 💡 items ရော၊ items ထဲက seat ကိုပါ တစ်ခါတည်း Nested ဆွဲယူရန် 'items.seat' ဟု ရေးရပါမည်
-    $bookings = Booking::with(['user', 'event', 'items.seat'])
-        ->orderBy('created_at', 'desc')
-        ->get();
-
-    $totalRevenue = $bookings->sum('total_price');
-
-    // စုစုပေါင်း လက်မှတ်စောင်ရေ ရောင်းရမှု
-    $totalTicketsSold = $bookings->sum(function($booking) {
-        return $booking->items->count();
-    });
-
-    return response()->json([
-        'success' => true,
-        'total_revenue' => $totalRevenue,
-        'total_tickets_sold' => $totalTicketsSold,
-        'bookings' => $bookings
-    ]);
-}
-
-// app/Http/Controllers/BookingController.php ထဲတွင် ထည့်ရန်
-
-// ၁။ User စာရင်းအားလုံးကို ဆွဲထုတ်ရန် (Admin မဟုတ်သူများကိုသာ)
-public function getUsers(): JsonResponse
-{
-    $users = User::where('role', '!=', 'admin') // သင့်စနစ်ထဲက admin role စစ်ဆေးမှုအတိုင်း ရေးနိုင်ပါတယ်
-                 ->orderBy('created_at', 'desc')
-                 ->get();
-
-    return response()->json(['success' => true, 'users' => $users]);
-}
-
-// ၂။ User ကို Block / Unblock ပြုလုပ်ရန်
-public function toggleUserStatus($id): JsonResponse
-{
-    $user = User::find($id);
-    if (!$user) {
-        return response()->json(['success' => false, 'message' => 'အသုံးပြုသူ ရှာမတွေ့ပါဗျာ။'], 404);
-    }
-
-    // လက်ရှိ status ကို ပြောင်းပြန်လှန်လိုက်ခြင်း (True ဖြစ်ရင် False၊ False ဖြစ်ရင် True)
-    $user->is_active = !$user->is_active;
-    $user->save();
-
-    $statusMessage = $user->is_active ? '🔓 အကောင့်ကို ပြန်လည်ဖွင့်လှစ်ပေးလိုက်ပါပြီ။' : '🔒 အကောင့်ကို ပိတ်ပင် (Block) လိုက်ပါပြီ။';
-
-    return response()->json(['success' => true, 'message' => $statusMessage, 'user' => $user]);
-}
 }

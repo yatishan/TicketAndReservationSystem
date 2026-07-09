@@ -1,7 +1,6 @@
 <?php
 
 namespace App\Http\Controllers\Api;
-
 use App\Events\SeatStatusUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
@@ -238,5 +237,53 @@ class BookingController extends Controller
         }
 
         return response('QR Code ဆောက်လုပ်ခြင်း မအောင်မြင်ပါ', 500);
+    }
+
+    public function verifyTicket($token): JsonResponse
+    {
+        // ၁။ ပေးလိုက်တဲ့ Token နဲ့ ကိုက်ညီတဲ့ Booking ရှိမရှိ ရှာမယ် (သက်ဆိုင်ရာ ခုံနံပါတ်၊ ပွဲအသေးစိတ်ပါ တစ်ခါတည်းဆွဲထုတ်မည်)
+        $booking = Booking::with(['items.seat', 'items.seat.event'])
+            ->where('ticket_token', $token)
+            ->first();
+
+        // ၂။ လက်မှတ် ရှာမတွေ့ပါက ပယ်ချမည်
+        if (!$booking) {
+            return response()->json([
+                'success' => false,
+                'message' => '❌ လက်မှတ်အတု ဖြစ်ပါသည် သို့မဟုတ် စနစ်ထဲတွင် ရှာမတွေ့ပါ။'
+            ], 404);
+        }
+
+        // ၃။ ငွေမချေရသေးတဲ့ လက်မှတ်ဆိုလျှင် ပယ်ချမည်
+        if ($booking->payment_status !== 'paid') {
+            return response()->json([
+                'success' => false,
+                'message' => '⚠️ ဤလက်မှတ်မှာ ငွေပေးချေမှု မအောင်မြင်ထားပါသဖြင့် အသုံးပြု၍မရပါ။'
+            ], 422);
+        }
+
+        // ၄။ သုံးပြီးသား လက်မှတ် ဖြစ်နေပါက အချိန်နှင့်တကွ ပြသ၍ ပယ်ချမည်
+        if ($booking->used_at) {
+            $formattedTime = Carbon::parse($booking->used_at)->timezone('Asia/Yangon')->format('d-m-Y h:i A');
+            return response()->json([
+                'success' => false,
+                'message' => "🚫 ဤလက်မှတ်သည် သုံးပြီးသား ဖြစ်နေပါသည်။ ($formattedTime တွင် အသုံးပြုခဲ့ပြီး)"
+            ], 422);
+        }
+
+        // ၅။ အားလုံး မှန်ကန်ပါက အသုံးပြုလိုက်သည့် အချိန်ကို သိမ်းဆည်းလိုက်မည် (တစ်ခါသုံး ဖြစ်သွားစေရန်)
+       $booking->used_at = Carbon::now();
+       $booking->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => '✅ လက်မှတ် စစ်ဆေးမှု အောင်မြင်ပါသည်။ ပွဲထဲသို့ ဝင်ရောက်ခွင့်ပြုနိုင်ပါပြီ။',
+            'booking_details' => [
+                'booking_id' => $booking->id,
+                'total_price' => $booking->total_price,
+                'seats' => $booking->items->map(fn($item) => $item->seat->seat_number),
+                'event_title' => $booking->items->first()?->seat?->event?->title ?? 'N/A'
+            ]
+        ]);
     }
 }
