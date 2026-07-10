@@ -2,11 +2,11 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom"; // 👈 useNavigate ကို အသုံးပြုပါမည်
 import API from "../services/api";
 
-const BookingHistory = ({ onBack, onResumePayment }) => {
+const BookingHistory = ({ onBack, onResumePayment ,handleDownloadQR }) => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const navigate = useNavigate(); // 👈 ၁။ ရူတင် လမ်းကြောင်းရွှေ့ရန် တည်ဆောက်ခြင်း
+  const navigate = useNavigate();
 
   useEffect(() => {
     API.get("/my-bookings")
@@ -20,7 +20,7 @@ const BookingHistory = ({ onBack, onResumePayment }) => {
       });
   }, []);
 
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (status ) => {
     switch (status) {
       case "paid": // 💡 မိတ်ဆွေ၏ Backend တွင် 'paid' ဟု သုံးထားသဖြင့် အမှန်ပြင်လိုက်ပါသည်
         return (
@@ -101,6 +101,12 @@ const BookingHistory = ({ onBack, onResumePayment }) => {
                           </span>
                         </span>
                       </div>
+                      {booking.payment_status=="paid"&&<button
+                        onClick={()=>handleDownloadQR(booking.ticket_token)}
+                        className="btn btn-outline-success btn-sm w-100 fw-bold py-2 shadow-sm d-flex my-2 align-items-center justify-content-center gap-2"
+                      >
+                        📥 လက်မှတ်ဒေါင်းလုဒ်ဆွဲရန် (Download)
+                      </button>}
                     </div>
 
                     {/* ညာဘက်ခြမ်း: Badge နှင့် ငွေချေရန် ခလုတ် */}

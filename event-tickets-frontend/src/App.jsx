@@ -94,11 +94,11 @@ function App() {
     setIsPaid(true);
   };
 
-  const handleDownloadQR = async () => {
+  const handleDownloadQR = async (ticket_token) => {
     try {
       // Backend QR URL ထံမှ ပုံဒေတာကို လှမ်းတောင်းခြင်း
       const response = await fetch(
-        `http://localhost:8000/api/ticket/${ticketToken}/qrcode`,
+        `http://localhost:8000/api/ticket/${ticket_token}/qrcode`,
       );
       const blob = await response.blob();
 
@@ -106,7 +106,7 @@ function App() {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `ticket-${ticketToken.substring(0, 8)}.svg`; // ဖိုင်အမည်အား ticket-xxxxxx.svg ဟု သတ်မှတ်ခြင်း
+      link.download = `ticket-${ticket_token.substring(0, 8)}.svg`; // ဖိုင်အမည်အား ticket-xxxxxx.svg ဟု သတ်မှတ်ခြင်း
       document.body.appendChild(link);
       link.click();
 
@@ -198,6 +198,7 @@ function App() {
                       setCurrentView("home");
                       handleProceedToPay(bookingId, totalPrice);
                     }}
+                    handleDownloadQR={handleDownloadQR}
                   />
                 ) : (
                   <>
@@ -263,7 +264,7 @@ function App() {
                                 style={{ width: "200px", height: "200px" }}
                               />
                               <button
-                                onClick={handleDownloadQR}
+                                onClick={()=>handleDownloadQR(ticketToken)}
                                 className="btn btn-outline-success btn-sm w-100 fw-bold py-2 shadow-sm d-flex align-items-center justify-content-center gap-2"
                               >
                                 📥 လက်မှတ်ဒေါင်းလုဒ်ဆွဲရန် (Download)
